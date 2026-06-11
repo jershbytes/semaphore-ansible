@@ -35,6 +35,21 @@
     mode: "0750"
   become: true
 
+- name: Check semaphore temp path state
+  ansible.builtin.stat:
+    path: "{{ semaphore_tmp_dir }}"
+  register: semaphore_tmp_path
+  become: true
+
+- name: Remove semaphore temp path if it is a file
+  ansible.builtin.file:
+    path: "{{ semaphore_tmp_dir }}"
+    state: absent
+  become: true
+  when:
+    - semaphore_tmp_path.stat.exists
+    - not semaphore_tmp_path.stat.isdir
+
 - name: Create semaphore temp directory
   ansible.builtin.file:
     path: "{{ semaphore_tmp_dir }}"

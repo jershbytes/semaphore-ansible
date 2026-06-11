@@ -1,7 +1,7 @@
 {
 {% if semaphore_db_dialect == 'sqlite' %}
   "sqlite": {
-    "path": "{{ semaphore_sqlite_db_path }}"
+    "host": "{{ semaphore_sqlite_db_path }}"
   },
 {% endif %}
 {% if semaphore_db_dialect == 'mysql' %}
@@ -21,7 +21,7 @@
   },
 {% endif %}
   "dialect": "{{ semaphore_db_dialect }}",
-  "port": ":{{ semaphore_port }}",
+  "port": "{{ semaphore_port }}",
   "interface": "{{ semaphore_web_host }}",
   "tmp_path": "{{ semaphore_tmp_dir }}",
   "cookie_hash": "{{ semaphore_cookie_hash }}",

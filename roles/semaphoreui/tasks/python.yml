@@ -17,6 +17,7 @@
   ansible.builtin.pip:
     name: "{{ semaphore_pip_requirements }}"
     virtualenv: "{{ semaphore_venv_path }}"
+    virtualenv_command: "/usr/bin/python3 -m venv"
     state: present
     extra_args: "--upgrade"
   become: true
@@ -35,6 +36,20 @@
     mode: "0640"
   become: true
   when: semaphore_galaxy_requirements_file | length > 0
+
+- name: Install Ansible Galaxy collections and roles (venv context)
+  ansible.builtin.command:
+    cmd: >-
+      {{ semaphore_venv_path }}/bin/ansible-galaxy install
+      --roles-path {{ semaphore_user_home }}/.ansible/roles
+      --collections-path {{ semaphore_user_home }}/.ansible/collections
+      -r {{ semaphore_user_home }}/requirements.yml
+      --force
+  become: true
+  become_user: "{{ semaphore_user }}"
+  when:
+    - semaphore_galaxy_requirements_file | length > 0
+    - semaphore_use_venv | bool
 
 - name: Install Ansible Galaxy collections and roles (user context)
   ansible.builtin.command:

@@ -22,3 +22,4 @@ inventory/host_vars/**/vault.yml
 
 
 .vault_password
+inventory/hosts.yml
