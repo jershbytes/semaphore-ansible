@@ -1,0 +1,21 @@
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+uv.lock          # optionally commit this if you want reproducible deps
+
+# Ansible
+*.retry
+.ansible/
+
+# Secrets — never commit vault passwords or plaintext secrets
+*.vault_password
+vault_password_file
+inventory/group_vars/vault.yml
+inventory/host_vars/**/vault.yml
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
