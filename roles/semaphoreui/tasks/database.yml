@@ -21,7 +21,7 @@
     name:
       - mariadb-server
       - mariadb-client
-      - python3-pymysql          # required by community.mysql modules
+      - python3-pymysql          # required by ansible.mysql modules
     state: present
     update_cache: true
     cache_valid_time: "{{ apt_cache_valid_time | default(3600) }}"
@@ -37,7 +37,7 @@
   when: semaphore_db_dialect == 'mysql'
 
 - name: Set MariaDB root password
-  community.mysql.mysql_user:
+  ansible.mysql.mysql_user:
     name: root
     host: localhost
     password: "{{ semaphore_mysql_root_password }}"
@@ -50,7 +50,7 @@
     - semaphore_mysql_root_password | length > 0
 
 - name: Create semaphore MySQL database
-  community.mysql.mysql_db:
+  ansible.mysql.mysql_db:
     name: "{{ semaphore_mysql_db }}"
     state: present
     encoding: utf8mb4
@@ -63,7 +63,7 @@
   when: semaphore_db_dialect == 'mysql'
 
 - name: Create semaphore MySQL user
-  community.mysql.mysql_user:
+  ansible.mysql.mysql_user:
     name: "{{ semaphore_mysql_user }}"
     password: "{{ semaphore_mysql_password }}"
     host: "{{ semaphore_mysql_client_host }}"

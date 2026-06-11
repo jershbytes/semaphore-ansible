@@ -19,3 +19,6 @@ inventory/host_vars/**/vault.yml
 .idea/
 *.swp
 *~
+
+
+.vault_password
