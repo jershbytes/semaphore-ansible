@@ -1,0 +1,35 @@
+{
+{% if semaphore_db_dialect == 'sqlite' %}
+  "sqlite": {
+    "path": "{{ semaphore_sqlite_db_path }}"
+  },
+{% endif %}
+{% if semaphore_db_dialect == 'mysql' %}
+  "mysql": {
+    "host": "{{ semaphore_mysql_host }}",
+    "user": "{{ semaphore_mysql_user }}",
+    "pass": "{{ semaphore_mysql_password }}",
+    "name": "{{ semaphore_mysql_db }}"
+  },
+{% endif %}
+{% if semaphore_db_dialect == 'postgres' %}
+  "postgres": {
+    "host": "{{ semaphore_postgres_host }}",
+    "user": "{{ semaphore_postgres_user }}",
+    "pass": "{{ semaphore_postgres_password }}",
+    "name": "{{ semaphore_postgres_db }}"
+  },
+{% endif %}
+  "dialect": "{{ semaphore_db_dialect }}",
+  "port": ":{{ semaphore_port }}",
+  "interface": "{{ semaphore_web_host }}",
+  "tmp_path": "{{ semaphore_tmp_dir }}",
+  "cookie_hash": "{{ semaphore_cookie_hash }}",
+  "cookie_encryption": "{{ semaphore_cookie_encryption }}",
+  "access_key_encryption": "{{ semaphore_access_key_encryption }}",
+  "email_alert": false,
+  "telegram_alert": false,
+  "slack_alert": false,
+  "ldap_enable": false,
+  "git_client": "cmd_git"
+}

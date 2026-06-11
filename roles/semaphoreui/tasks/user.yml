@@ -1,0 +1,45 @@
+---
+- name: Create semaphore system group
+  ansible.builtin.group:
+    name: "{{ semaphore_group }}"
+    system: true
+    state: present
+  become: true
+
+- name: Create semaphore system user
+  ansible.builtin.user:
+    name: "{{ semaphore_user }}"
+    group: "{{ semaphore_group }}"
+    home: "{{ semaphore_user_home }}"
+    shell: "{{ semaphore_user_shell }}"
+    system: true
+    create_home: true
+    state: present
+  become: true
+
+- name: Create semaphore config directory
+  ansible.builtin.file:
+    path: "{{ semaphore_config_dir }}"
+    state: directory
+    owner: "{{ semaphore_user }}"
+    group: "{{ semaphore_group }}"
+    mode: "0750"
+  become: true
+
+- name: Create semaphore data directory
+  ansible.builtin.file:
+    path: "{{ semaphore_data_dir }}"
+    state: directory
+    owner: "{{ semaphore_user }}"
+    group: "{{ semaphore_group }}"
+    mode: "0750"
+  become: true
+
+- name: Create semaphore temp directory
+  ansible.builtin.file:
+    path: "{{ semaphore_tmp_dir }}"
+    state: directory
+    owner: "{{ semaphore_user }}"
+    group: "{{ semaphore_group }}"
+    mode: "0750"
+  become: true

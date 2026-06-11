@@ -1,0 +1,95 @@
+---
+# -------------------------------------------------
+# SemaphoreUI version
+# -------------------------------------------------
+semaphore_version: "2.18.12"
+
+# -------------------------------------------------
+# Service user & group
+# -------------------------------------------------
+semaphore_user: semaphore
+semaphore_group: semaphore
+semaphore_user_home: /home/semaphore
+semaphore_user_shell: /bin/bash
+
+# -------------------------------------------------
+# Paths
+# -------------------------------------------------
+semaphore_bin_dir: /usr/local/bin
+semaphore_config_dir: /etc/semaphore
+semaphore_data_dir: /var/lib/semaphore
+semaphore_tmp_dir: /tmp/semaphore
+
+# -------------------------------------------------
+# Web server settings
+# -------------------------------------------------
+semaphore_web_host: "0.0.0.0"
+semaphore_port: "3000"
+
+# -------------------------------------------------
+# Database backend: 'sqlite' (embedded SQLite),
+# 'mysql', or 'postgres'
+# -------------------------------------------------
+semaphore_db_dialect: sqlite
+
+# SQLite DB file path (used when semaphore_db_dialect == 'sqlite')
+semaphore_sqlite_db_path: "{{ semaphore_data_dir }}/database.sqlite"
+
+# MySQL / MariaDB settings (used when semaphore_db_dialect == 'mysql')
+semaphore_mysql_host: "127.0.0.1:3306"
+semaphore_mysql_user: semaphore
+semaphore_mysql_password: "changeme_mysql"
+semaphore_mysql_db: semaphore
+# Root password used to create the DB/user (only needed for local install)
+semaphore_mysql_root_password: ""
+# Host from which the semaphore user connects (use '127.0.0.1' for local)
+semaphore_mysql_client_host: "127.0.0.1"
+
+# PostgreSQL settings (used when semaphore_db_dialect == 'postgres')
+semaphore_postgres_host: "127.0.0.1:5432"
+semaphore_postgres_user: semaphore
+semaphore_postgres_password: "changeme_postgres"
+semaphore_postgres_db: semaphore
+
+# -------------------------------------------------
+# Admin account (created on first run only)
+# -------------------------------------------------
+semaphore_admin_user: admin
+semaphore_admin_password: "changeme"
+semaphore_admin_email: "admin@localhost"
+semaphore_admin_name: "Admin"
+
+# -------------------------------------------------
+# Python / Ansible setup
+# -------------------------------------------------
+# Install Ansible via pip into the service user's context
+semaphore_install_ansible_pip: true
+
+# Optional: use a Python virtual environment
+semaphore_use_venv: false
+semaphore_venv_path: "{{ semaphore_user_home }}/venv"
+
+# pip requirements (leave empty to skip)
+semaphore_pip_requirements:
+  - ansible
+  - netaddr
+  - jmespath
+
+# Ansible Galaxy collections requirements file path (leave empty to skip)
+# The file must exist on the controller or be created via the 'files' dir.
+semaphore_galaxy_requirements_file: ""
+
+# -------------------------------------------------
+# Systemd logging
+# -------------------------------------------------
+semaphore_syslog_enabled: true
+
+# -------------------------------------------------
+# Firewall (ufw) - open semaphore port
+# -------------------------------------------------
+semaphore_configure_ufw: false
+
+# -------------------------------------------------
+# GitHub release base URL (override for air-gapped envs)
+# -------------------------------------------------
+semaphore_release_base_url: "https://github.com/semaphoreui/semaphore/releases/download"

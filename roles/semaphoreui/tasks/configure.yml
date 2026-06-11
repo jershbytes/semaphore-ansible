@@ -1,0 +1,80 @@
+---
+- name: Generate cookie_hash secret
+  ansible.builtin.set_fact:
+    semaphore_cookie_hash: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+  when: semaphore_cookie_hash is not defined
+
+- name: Generate cookie_encryption secret
+  ansible.builtin.set_fact:
+    semaphore_cookie_encryption: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+  when: semaphore_cookie_encryption is not defined
+
+- name: Generate access_key_encryption secret
+  ansible.builtin.set_fact:
+    semaphore_access_key_encryption: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+  when: semaphore_access_key_encryption is not defined
+
+- name: Deploy semaphore config.json
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: "{{ semaphore_config_file }}"
+    owner: "{{ semaphore_user }}"
+    group: "{{ semaphore_group }}"
+    mode: "0640"
+  become: true
+  notify: Restart semaphore
+
+- name: Deploy semaphore systemd service
+  ansible.builtin.template:
+    src: semaphore.service.j2
+    dest: /etc/systemd/system/semaphore.service
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify:
+    - Reload systemd
+    - Restart semaphore
+
+- name: Check if semaphore admin user already exists
+  ansible.builtin.command:
+    cmd: >-
+      {{ semaphore_bin_path }} user list
+      --config {{ semaphore_config_file }}
+  register: semaphore_user_list
+  changed_when: false
+  failed_when: false
+  become: true
+  become_user: "{{ semaphore_user }}"
+
+- name: Create semaphore admin user (first-time setup)
+  ansible.builtin.command:
+    cmd: >-
+      {{ semaphore_bin_path }} user add
+      --admin
+      --name "{{ semaphore_admin_name }}"
+      --login "{{ semaphore_admin_user }}"
+      --email "{{ semaphore_admin_email }}"
+      --password "{{ semaphore_admin_password }}"
+      --config {{ semaphore_config_file }}
+  become: true
+  become_user: "{{ semaphore_user }}"
+  when: semaphore_admin_user not in (semaphore_user_list.stdout | default(''))
+  no_log: true
+
+- name: Open semaphore port via ufw
+  community.general.ufw:
+    rule: allow
+    port: "{{ semaphore_port }}"
+    proto: tcp
+    comment: "SemaphoreUI web UI"
+  become: true
+  when: semaphore_configure_ufw | bool
+
+- name: Enable and start semaphore service
+  ansible.builtin.systemd:
+    name: semaphore
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true

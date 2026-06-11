@@ -1,0 +1,21 @@
+---
+- name: Install OS dependencies
+  ansible.builtin.apt:
+    name:
+      - git
+      - curl
+      - wget
+      - python3
+      - python3-pip
+      - python3-venv
+    state: present
+    update_cache: true
+    cache_valid_time: "{{ apt_cache_valid_time | default(3600) }}"
+  become: true
+
+- name: Install ufw (if firewall management is enabled)
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  become: true
+  when: semaphore_configure_ufw | bool

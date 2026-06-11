@@ -1,0 +1,135 @@
+---
+# -----------------------------------------------------------------------
+# SQLite — just needs the sqlite3 package; no service configuration needed
+# -----------------------------------------------------------------------
+- name: Install sqlite3 package
+  ansible.builtin.apt:
+    name:
+      - sqlite3
+      - libsqlite3-dev
+    state: present
+    update_cache: true
+    cache_valid_time: "{{ apt_cache_valid_time | default(3600) }}"
+  become: true
+  when: semaphore_db_dialect == 'sqlite'
+
+# -----------------------------------------------------------------------
+# MariaDB / MySQL
+# -----------------------------------------------------------------------
+- name: Install MariaDB packages
+  ansible.builtin.apt:
+    name:
+      - mariadb-server
+      - mariadb-client
+      - python3-pymysql          # required by community.mysql modules
+    state: present
+    update_cache: true
+    cache_valid_time: "{{ apt_cache_valid_time | default(3600) }}"
+  become: true
+  when: semaphore_db_dialect == 'mysql'
+
+- name: Ensure MariaDB service is enabled and started
+  ansible.builtin.systemd:
+    name: mariadb
+    enabled: true
+    state: started
+  become: true
+  when: semaphore_db_dialect == 'mysql'
+
+- name: Set MariaDB root password
+  community.mysql.mysql_user:
+    name: root
+    host: localhost
+    password: "{{ semaphore_mysql_root_password }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    state: present
+  become: true
+  no_log: true
+  when:
+    - semaphore_db_dialect == 'mysql'
+    - semaphore_mysql_root_password | length > 0
+
+- name: Create semaphore MySQL database
+  community.mysql.mysql_db:
+    name: "{{ semaphore_mysql_db }}"
+    state: present
+    encoding: utf8mb4
+    collation: utf8mb4_unicode_ci
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    login_password: "{{ semaphore_mysql_root_password }}"
+  become: true
+  no_log: true
+  when: semaphore_db_dialect == 'mysql'
+
+- name: Create semaphore MySQL user
+  community.mysql.mysql_user:
+    name: "{{ semaphore_mysql_user }}"
+    password: "{{ semaphore_mysql_password }}"
+    host: "{{ semaphore_mysql_client_host }}"
+    priv: "{{ semaphore_mysql_db }}.*:ALL"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    login_password: "{{ semaphore_mysql_root_password }}"
+  become: true
+  no_log: true
+  when: semaphore_db_dialect == 'mysql'
+
+# -----------------------------------------------------------------------
+# PostgreSQL
+# -----------------------------------------------------------------------
+- name: Install PostgreSQL packages
+  ansible.builtin.apt:
+    name:
+      - postgresql
+      - postgresql-client
+      - python3-psycopg2          # required by community.postgresql modules
+    state: present
+    update_cache: true
+    cache_valid_time: "{{ apt_cache_valid_time | default(3600) }}"
+  become: true
+  when: semaphore_db_dialect == 'postgres'
+
+- name: Ensure PostgreSQL service is enabled and started
+  ansible.builtin.systemd:
+    name: postgresql
+    enabled: true
+    state: started
+  become: true
+  when: semaphore_db_dialect == 'postgres'
+
+- name: Create semaphore PostgreSQL role
+  community.postgresql.postgresql_user:
+    name: "{{ semaphore_postgres_user }}"
+    password: "{{ semaphore_postgres_password }}"
+    role_attr_flags: NOSUPERUSER,NOCREATEDB,NOCREATEROLE
+    state: present
+  become: true
+  become_user: postgres
+  no_log: true
+  when: semaphore_db_dialect == 'postgres'
+
+- name: Create semaphore PostgreSQL database
+  community.postgresql.postgresql_db:
+    name: "{{ semaphore_postgres_db }}"
+    owner: "{{ semaphore_postgres_user }}"
+    encoding: UTF8
+    lc_collate: en_US.UTF-8
+    lc_ctype: en_US.UTF-8
+    template: template0
+    state: present
+  become: true
+  become_user: postgres
+  when: semaphore_db_dialect == 'postgres'
+
+- name: Grant semaphore PostgreSQL user privileges
+  community.postgresql.postgresql_privs:
+    database: "{{ semaphore_postgres_db }}"
+    roles: "{{ semaphore_postgres_user }}"
+    type: database
+    privs: ALL
+    state: present
+  become: true
+  become_user: postgres
+  when: semaphore_db_dialect == 'postgres'

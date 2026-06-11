@@ -1,0 +1,20 @@
+---
+# Architecture map: Ansible fact -> SemaphoreUI release suffix
+semaphore_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: arm
+  armv6l: arm
+
+# Resolved architecture for the target host
+semaphore_arch: "{{ semaphore_arch_map[ansible_architecture] | default('amd64') }}"
+
+# Full download URL for the tarball
+semaphore_tarball_name: "semaphore_{{ semaphore_version }}_linux_{{ semaphore_arch }}.tar.gz"
+semaphore_download_url: "{{ semaphore_release_base_url }}/v{{ semaphore_version }}/{{ semaphore_tarball_name }}"
+
+# Resolved binary path
+semaphore_bin_path: "{{ semaphore_bin_dir }}/semaphore"
+
+# Config file path
+semaphore_config_file: "{{ semaphore_config_dir }}/config.json"

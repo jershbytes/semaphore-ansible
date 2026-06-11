@@ -1,0 +1,6 @@
+---
+# Raspberry Pi specific overrides
+# Typically running Raspberry Pi OS (Debian-based) on ARM
+
+# Uncomment if your Pi requires sudo password
+# ansible_become_password: "{{ vault_become_password }}"

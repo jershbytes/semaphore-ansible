@@ -1,0 +1,34 @@
+---
+# site.yml — Main playbook entry point
+#
+# Target all hosts in the inventory (proxmox_vms and raspberrypi groups).
+# To target only one group, use:
+#   ansible-playbook -i inventory/hosts.yml site.yml --limit proxmox_vms
+#   ansible-playbook -i inventory/hosts.yml site.yml --limit raspberrypi
+
+- name: Install and configure SemaphoreUI
+  hosts: proxmox_vms:raspberrypi
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Verify target OS is Debian/Ubuntu based
+      ansible.builtin.assert:
+        that:
+          - ansible_os_family == "Debian"
+        fail_msg: >-
+          This role only supports Debian/Ubuntu-based systems.
+          Detected OS family: {{ ansible_os_family }}
+        success_msg: "OS check passed: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+  roles:
+    - role: semaphoreui
+
+  post_tasks:
+    - name: Print access information
+      ansible.builtin.debug:
+        msg:
+          - "SemaphoreUI installation complete!"
+          - "Access the UI at: http://{{ ansible_host | default(inventory_hostname) }}:{{ semaphore_port }}"
+          - "Admin user: {{ semaphore_admin_user }}"
+          - "Check service status with: systemctl status semaphore"
