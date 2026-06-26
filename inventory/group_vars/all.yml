@@ -1,8 +1,0 @@
----
-# Common variables for all hosts
-
-# Ansible connection settings
-ansible_python_interpreter: /usr/bin/python3
-
-# Whether to update apt cache on each run
-apt_cache_valid_time: 3600

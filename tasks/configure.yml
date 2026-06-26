@@ -57,6 +57,8 @@
       --email "{{ semaphore_admin_email }}"
       --password "{{ semaphore_admin_password }}"
       --config {{ semaphore_config_file }}
+  register: semaphore_admin_user_create
+  changed_when: semaphore_admin_user_create.rc == 0
   become: true
   become_user: "{{ semaphore_user }}"
   when: semaphore_admin_user not in (semaphore_user_list.stdout | default(''))
@@ -69,7 +71,9 @@
     proto: tcp
     comment: "SemaphoreUI web UI"
   become: true
-  when: semaphore_configure_ufw | bool
+  when:
+    - semaphore_configure_ufw | bool
+    - not (semaphore_caddy_enable_https | bool)
 
 - name: Enable and start semaphore service
   ansible.builtin.systemd:

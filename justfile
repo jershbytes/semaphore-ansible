@@ -25,7 +25,7 @@ install:
     @echo ">>> Creating/updating Python venv with uv..."
     uv sync
     @echo ">>> Installing Ansible Galaxy collections..."
-    {{venv_galaxy}} collection install -r requirements.yml --upgrade
+    {{venv_galaxy}} collection install -r requirements.yml --upgrade -p .ansible/collections
     @echo ">>> Done. Run 'just deploy' to install SemaphoreUI."
 
 # ── Deployment ────────────────────────────────────────────────────────────────
@@ -100,7 +100,7 @@ vault-decrypt file:
 
 # Lint all playbooks and roles with ansible-lint
 lint:
-    {{venv_lint}} site.yml
+    ANSIBLE_COLLECTIONS_PATH=.ansible/collections uv run ansible-lint -q site.yml
 
 # Lint using yamllint only
 yamllint:

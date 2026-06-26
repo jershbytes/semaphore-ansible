@@ -62,11 +62,13 @@ semaphore_admin_name: "Admin"
 # -------------------------------------------------
 # Python / Ansible setup
 # -------------------------------------------------
-# Install Ansible-related Python packages for the service user
-semaphore_install_ansible_pip: true
+# Install Ansible-related Python packages on the target host.
+# Disabled by default for binary-first Semaphore installations.
+semaphore_install_ansible_pip: false
 
 # Use a dedicated virtual environment on the target host (recommended for PEP 668 systems)
-semaphore_use_venv: true
+# Only used when semaphore_install_ansible_pip is true.
+semaphore_use_venv: false
 semaphore_venv_path: "{{ semaphore_user_home }}/venv"
 
 # pip requirements (leave empty to skip)
@@ -93,3 +95,53 @@ semaphore_configure_ufw: false
 # GitHub release base URL (override for air-gapped envs)
 # -------------------------------------------------
 semaphore_release_base_url: "https://github.com/semaphoreui/semaphore/releases/download"
+
+# -------------------------------------------------
+# Caddy / xcaddy (optional)
+# -------------------------------------------------
+# Install xcaddy helper binary (requires Go toolchain)
+semaphore_install_xcaddy: true
+
+# If true, only install xcaddy and skip building caddy binary
+semaphore_install_only_xcaddy: false
+
+# Configure and run Caddy as a reverse proxy for SemaphoreUI.
+semaphore_caddy_enable_https: true
+
+# Public hostname for ACME certificates (example: semaphore.example.com).
+# Leave empty to serve HTTPS with an internal Caddy certificate.
+semaphore_caddy_domain: ""
+
+# Upstream address used by Caddy to reach SemaphoreUI.
+semaphore_caddy_upstream: "127.0.0.1:{{ semaphore_port }}"
+
+# Paths for Caddy runtime configuration/state.
+semaphore_caddy_config_dir: /etc/caddy
+semaphore_caddy_config_file: "{{ semaphore_caddy_config_dir }}/Caddyfile"
+semaphore_caddy_data_dir: /var/lib/caddy
+
+# Go version used to install xcaddy
+semaphore_go_version: "1.24.5"
+
+# Architecture map for Go release artifacts
+semaphore_go_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: armv6l
+  armv6l: armv6l
+
+# Resolved Go architecture for the target host
+semaphore_go_arch: "{{ semaphore_go_arch_map[ansible_architecture] | default('amd64') }}"
+
+# Install paths for Go and binaries
+semaphore_go_root: /usr/local/go
+semaphore_go_path: /opt/go
+semaphore_xcaddy_bin_path: /usr/local/bin/xcaddy
+semaphore_caddy_bin_path: /usr/local/bin/caddy
+
+# Optional xcaddy plugins used when building caddy
+# Example:
+# semaphore_caddy_xcaddy_plugins:
+#   - github.com/caddy-dns/cloudflare@latest
+semaphore_caddy_xcaddy_plugins:
+  - github.com/caddy-dns/cloudflare@latest

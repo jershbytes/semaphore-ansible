@@ -1,6 +1,0 @@
----
-# Proxmox VM specific overrides
-# Typically running Debian/Ubuntu on amd64
-
-# Uncomment if your VMs require sudo password
-# ansible_become_password: "{{ vault_become_password }}"

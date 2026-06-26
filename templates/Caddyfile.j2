@@ -1,0 +1,12 @@
+{% if semaphore_caddy_domain | length > 0 %}
+{{ semaphore_caddy_domain }} {
+{% else %}
+:443 {
+{% endif %}
+  reverse_proxy {{ semaphore_caddy_upstream }}
+
+{% if semaphore_caddy_domain | length == 0 %}
+  # Internal TLS for IP/local testing; trust warning is expected unless CA is installed.
+  tls internal
+{% endif %}
+}

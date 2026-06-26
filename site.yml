@@ -21,8 +21,10 @@
           Detected OS family: {{ ansible_os_family }}
         success_msg: "OS check passed: {{ ansible_distribution }} {{ ansible_distribution_version }}"
 
-  roles:
-    - role: semaphoreui
+  tasks:
+    - name: Apply local SemaphoreUI role
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir }}"
 
   post_tasks:
     - name: Print access information

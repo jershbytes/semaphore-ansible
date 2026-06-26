@@ -2,6 +2,9 @@
 - name: Include dependency installation
   ansible.builtin.import_tasks: dependencies.yml
 
+- name: Include optional Caddy / xcaddy setup
+  ansible.builtin.import_tasks: caddy.yml
+
 - name: Include database installation and setup
   ansible.builtin.import_tasks: database.yml
 
@@ -13,6 +16,7 @@
 
 - name: Include Python / Ansible setup
   ansible.builtin.import_tasks: python.yml
+  when: semaphore_install_ansible_pip | bool or semaphore_galaxy_requirements_file | length > 0
 
 - name: Include semaphore configuration and service setup
   ansible.builtin.import_tasks: configure.yml

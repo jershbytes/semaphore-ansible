@@ -22,7 +22,7 @@
 {% endif %}
   "dialect": "{{ semaphore_db_dialect }}",
   "port": "{{ semaphore_port }}",
-  "interface": "{{ semaphore_web_host }}",
+  "interface": "{{ '127.0.0.1' if semaphore_caddy_enable_https | bool else semaphore_web_host }}",
   "tmp_path": "{{ semaphore_tmp_dir }}",
   "cookie_hash": "{{ semaphore_cookie_hash }}",
   "cookie_encryption": "{{ semaphore_cookie_encryption }}",

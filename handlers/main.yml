@@ -10,3 +10,10 @@
     state: restarted
     daemon_reload: true
   become: true
+
+- name: Restart caddy
+  ansible.builtin.systemd:
+    name: caddy
+    state: restarted
+    daemon_reload: true
+  become: true

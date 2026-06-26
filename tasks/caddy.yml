@@ -1,0 +1,192 @@
+---
+- name: Install xcaddy build dependencies
+  ansible.builtin.apt:
+    name:
+      - debian-keyring
+      - debian-archive-keyring
+      - apt-transport-https
+      - curl
+      - ca-certificates
+      - tar
+    state: present
+    update_cache: true
+    cache_valid_time: "{{ apt_cache_valid_time | default(3600) }}"
+  become: true
+  when: semaphore_install_xcaddy | bool
+
+- name: Download Go tarball
+  ansible.builtin.get_url:
+    url: "https://go.dev/dl/go{{ semaphore_go_version }}.linux-{{ semaphore_go_arch }}.tar.gz"
+    dest: "/tmp/go{{ semaphore_go_version }}.linux-{{ semaphore_go_arch }}.tar.gz"
+    mode: "0644"
+    timeout: 60
+  become: true
+  when: semaphore_install_xcaddy | bool
+
+- name: Remove existing Go installation
+  ansible.builtin.file:
+    path: "{{ semaphore_go_root }}"
+    state: absent
+  become: true
+  when: semaphore_install_xcaddy | bool
+
+- name: Extract Go
+  ansible.builtin.unarchive:
+    src: "/tmp/go{{ semaphore_go_version }}.linux-{{ semaphore_go_arch }}.tar.gz"
+    dest: /usr/local
+    remote_src: true
+  become: true
+  when: semaphore_install_xcaddy | bool
+
+- name: Ensure GOPATH directory exists
+  ansible.builtin.file:
+    path: "{{ semaphore_go_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+  when: semaphore_install_xcaddy | bool
+
+- name: Install xcaddy
+  ansible.builtin.command:
+    cmd: "{{ semaphore_go_root }}/bin/go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest"
+    creates: "{{ semaphore_xcaddy_bin_path }}"
+  environment:
+    GOPATH: "{{ semaphore_go_path }}"
+    GOBIN: "{{ semaphore_xcaddy_bin_path | dirname }}"
+  become: true
+  when: semaphore_install_xcaddy | bool
+
+- name: Build caddy with plugins via xcaddy
+  ansible.builtin.command:
+    cmd: >-
+      {{ semaphore_xcaddy_bin_path }} build
+      {% for plugin in semaphore_caddy_xcaddy_plugins %}
+      --with {{ plugin }}
+      {% endfor %}
+      --output {{ semaphore_caddy_bin_path }}
+    creates: "{{ semaphore_caddy_bin_path }}"
+  environment:
+    GOPATH: "{{ semaphore_go_path }}"
+    PATH: "{{ semaphore_go_root }}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  become: true
+  when:
+    - semaphore_install_xcaddy | bool
+    - not (semaphore_install_only_xcaddy | bool)
+
+- name: Set caddy binary capabilities
+  community.general.capabilities:
+    path: "{{ semaphore_caddy_bin_path }}"
+    capability: cap_net_bind_service=+ep
+    state: present
+  become: true
+  when:
+    - semaphore_caddy_enable_https | bool
+    - semaphore_install_xcaddy | bool
+    - not (semaphore_install_only_xcaddy | bool)
+
+- name: Create caddy group
+  ansible.builtin.group:
+    name: caddy
+    system: true
+    state: present
+  become: true
+  when:
+    - semaphore_caddy_enable_https | bool
+    - semaphore_install_xcaddy | bool
+    - not (semaphore_install_only_xcaddy | bool)
+
+- name: Create caddy user
+  ansible.builtin.user:
+    name: caddy
+    group: caddy
+    home: "{{ semaphore_caddy_data_dir }}"
+    system: true
+    create_home: true
+    shell: /usr/sbin/nologin
+    state: present
+  become: true
+  when:
+    - semaphore_caddy_enable_https | bool
+    - semaphore_install_xcaddy | bool
+    - not (semaphore_install_only_xcaddy | bool)
+
+- name: Create caddy config directory
+  ansible.builtin.file:
+    path: "{{ semaphore_caddy_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+  when:
+    - semaphore_caddy_enable_https | bool
+    - semaphore_install_xcaddy | bool
+    - not (semaphore_install_only_xcaddy | bool)
+    - "'cap_net_bind_service=ep' not in (semaphore_caddy_getcap.stdout | default(''))"
+
+- name: Deploy Caddyfile for SemaphoreUI HTTPS proxy
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: "{{ semaphore_caddy_config_file }}"
+    owner: root
+    group: caddy
+    mode: "0640"
+  become: true
+  notify: Restart caddy
+  when:
+    - semaphore_caddy_enable_https | bool
+    - semaphore_install_xcaddy | bool
+    - not (semaphore_install_only_xcaddy | bool)
+
+- name: Deploy caddy systemd service
+  ansible.builtin.template:
+    src: caddy.service.j2
+    dest: /etc/systemd/system/caddy.service
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify:
+    - Reload systemd
+    - Restart caddy
+  when:
+    - semaphore_caddy_enable_https | bool
+    - semaphore_install_xcaddy | bool
+    - not (semaphore_install_only_xcaddy | bool)
+
+- name: Open HTTP and HTTPS ports via ufw for Caddy
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+    comment: "Caddy reverse proxy"
+  loop:
+    - "80"
+    - "443"
+  become: true
+  when:
+    - semaphore_configure_ufw | bool
+    - semaphore_caddy_enable_https | bool
+    - semaphore_install_xcaddy | bool
+    - not (semaphore_install_only_xcaddy | bool)
+
+- name: Enable and start caddy service
+  ansible.builtin.systemd:
+    name: caddy
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+  when:
+    - semaphore_caddy_enable_https | bool
+    - semaphore_install_xcaddy | bool
+    - not (semaphore_install_only_xcaddy | bool)
+
+- name: Clean up downloaded Go tarball
+  ansible.builtin.file:
+    path: "/tmp/go{{ semaphore_go_version }}.linux-{{ semaphore_go_arch }}.tar.gz"
+    state: absent
+  become: true
+  when: semaphore_install_xcaddy | bool

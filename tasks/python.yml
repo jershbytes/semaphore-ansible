@@ -45,6 +45,8 @@
       --collections-path {{ semaphore_user_home }}/.ansible/collections
       -r {{ semaphore_user_home }}/requirements.yml
       --force
+  register: semaphore_galaxy_install_venv
+  changed_when: semaphore_galaxy_install_venv.rc == 0
   become: true
   become_user: "{{ semaphore_user }}"
   when:
@@ -60,6 +62,8 @@
       -r {{ semaphore_user_home }}/requirements.yml
       --force
     creates: "{{ semaphore_user_home }}/.ansible"
+  register: semaphore_galaxy_install_user
+  changed_when: semaphore_galaxy_install_user.rc == 0
   become: true
   become_user: "{{ semaphore_user }}"
   when:

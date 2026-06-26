@@ -9,6 +9,8 @@ Ansible automation to install and configure **SemaphoreUI v2.18.12** on:
 
 SemaphoreUI is an open-source web UI for running Ansible playbooks, Terraform, and other DevOps tools without touching the terminal.
 
+This role installs SemaphoreUI as the upstream Linux binary by default.
+
 ---
 
 ## Requirements
@@ -91,11 +93,27 @@ Run `just` with no arguments to see all available commands.
 | `just versions` | Show Python / Ansible versions in use |
 | `just clean` | Remove `.venv` and temp files |
 
+`just lint` runs ansible-lint in quiet mode against project-local collections to reduce environment warning noise.
+
 Pass extra Ansible flags to any recipe by appending them:
 
 ```bash
 just deploy --ask-become-pass        # prompt for sudo password
 just deploy -e semaphore_port=8080   # override a variable inline
+```
+
+### Test on a new VM quickly
+
+Use the dedicated test playbook:
+
+```bash
+ansible-playbook -i "<vm-ip>," test-new-vm.yml -u <ssh-user> --ask-become-pass
+```
+
+Example:
+
+```bash
+ansible-playbook -i "192.168.1.150," test-new-vm.yml -u ubuntu --ask-become-pass
 ```
 
 ---
@@ -123,11 +141,14 @@ semaphore-ansible/
         │   ├── database.yml           # DB install (SQLite/MariaDB/Postgres)
         │   ├── user.yml               # semaphore service user + dirs
         │   ├── install.yml            # Download & install binary
+        │   ├── caddy.yml              # xcaddy/caddy build + HTTPS proxy setup
         │   ├── python.yml             # Ansible + pip setup on target
         │   └── configure.yml          # config.json, systemd, admin user
         └── templates/
             ├── config.json.j2         # SemaphoreUI config file
-            └── semaphore.service.j2   # systemd service unit
+          ├── semaphore.service.j2   # SemaphoreUI systemd service
+          ├── Caddyfile.j2           # Caddy reverse proxy config
+          └── caddy.service.j2       # Caddy systemd service
 ```
 
 ---
@@ -146,8 +167,51 @@ All settings live in `roles/semaphoreui/defaults/main.yml`. Override them in `in
 | `semaphore_admin_user` | `admin` | First admin login |
 | `semaphore_admin_password` | `changeme` | First admin password — **change this** |
 | `semaphore_admin_email` | `admin@localhost` | Admin email |
-| `semaphore_use_venv` | `false` | Run Ansible in a Python virtualenv on the target |
+| `semaphore_install_ansible_pip` | `false` | Install Ansible/pip tooling on the target host (optional) |
+| `semaphore_use_venv` | `false` | Run target-side Ansible in a Python virtualenv (only when `semaphore_install_ansible_pip=true`) |
 | `semaphore_configure_ufw` | `false` | Open the port in ufw |
+| `semaphore_install_xcaddy` | `true` | Install xcaddy helper binary |
+| `semaphore_install_only_xcaddy` | `false` | If `true`, skip building caddy binary |
+| `semaphore_caddy_enable_https` | `true` | Run Caddy as HTTPS reverse proxy in front of SemaphoreUI |
+| `semaphore_caddy_domain` | `""` | Domain for public ACME certificates (empty uses internal TLS) |
+
+### Caddy HTTPS defaults
+
+By default, the role:
+
+- Builds `caddy` with `xcaddy`
+- Enables and starts a `caddy` systemd service
+- Proxies HTTPS traffic to SemaphoreUI
+- Includes `github.com/caddy-dns/cloudflare@latest` in the build
+- Binds SemaphoreUI to localhost when Caddy HTTPS is enabled
+
+When `semaphore_caddy_domain` is empty, Caddy serves HTTPS using `tls internal`.
+For public trusted certificates, set a domain and make sure DNS points to the host:
+
+```yaml
+semaphore_caddy_domain: semaphore.example.com
+```
+
+If `semaphore_configure_ufw=true`, the role opens ports `80` and `443` for Caddy.
+
+Install only `xcaddy` (skip caddy build/runtime):
+
+```yaml
+semaphore_install_xcaddy: true
+semaphore_install_only_xcaddy: true
+```
+
+Disable Caddy HTTPS proxy entirely:
+
+```yaml
+semaphore_caddy_enable_https: false
+```
+
+By default, `semaphore_caddy_xcaddy_plugins` already includes:
+
+```yaml
+- github.com/caddy-dns/cloudflare@latest
+```
 
 ---
 

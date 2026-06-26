@@ -1,0 +1,6 @@
+---
+skip_list:
+  - name[casing]
+  - var-naming[no-role-prefix]
+exclude_paths:
+  - .github
