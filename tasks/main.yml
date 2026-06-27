@@ -17,5 +17,3 @@
 
 - name: Include database installation and setup
   ansible.builtin.import_tasks: database.yml
-
-
