@@ -2,7 +2,7 @@
 # -----------------------------------------------------------------------
 # SQLite — just needs the sqlite3 package; no service configuration needed
 # -----------------------------------------------------------------------
-- name: Install sqlite3 package
+- name: Install sqlite3 package (Debian)
   ansible.builtin.apt:
     name:
       - sqlite3
@@ -11,22 +11,49 @@
     update_cache: true
     cache_valid_time: "{{ apt_cache_valid_time | default(3600) }}"
   become: true
-  when: semaphore_db_dialect == 'sqlite'
+  when:
+    - semaphore_db_dialect == 'sqlite'
+    - ansible_os_family == 'Debian'
+
+- name: Install sqlite3 package (RedHat)
+  ansible.builtin.dnf:
+    name:
+      - sqlite
+      - sqlite-devel
+    state: present
+  become: true
+  when:
+    - semaphore_db_dialect == 'sqlite'
+    - ansible_os_family == 'RedHat'
 
 # -----------------------------------------------------------------------
 # MariaDB / MySQL
 # -----------------------------------------------------------------------
-- name: Install MariaDB packages
+- name: Install MariaDB packages (Debian)
   ansible.builtin.apt:
     name:
       - mariadb-server
       - mariadb-client
-      - python3-pymysql          # required by ansible.mysql modules
+      - python3-pymysql          # required by community.mysql modules
     state: present
     update_cache: true
     cache_valid_time: "{{ apt_cache_valid_time | default(3600) }}"
   become: true
-  when: semaphore_db_dialect == 'mysql'
+  when:
+    - semaphore_db_dialect == 'mysql'
+    - ansible_os_family == 'Debian'
+
+- name: Install MariaDB packages (RedHat)
+  ansible.builtin.dnf:
+    name:
+      - mariadb-server
+      - mariadb
+      - python3-PyMySQL          # required by community.mysql modules
+    state: present
+  become: true
+  when:
+    - semaphore_db_dialect == 'mysql'
+    - ansible_os_family == 'RedHat'
 
 - name: Ensure MariaDB service is enabled and started
   ansible.builtin.systemd:
@@ -41,7 +68,7 @@
     name: root
     host: localhost
     password: "{{ semaphore_mysql_root_password }}"
-    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_unix_socket: "{{ semaphore_mysql_socket }}"
     state: present
   become: true
   no_log: true
@@ -55,7 +82,7 @@
     state: present
     encoding: utf8mb4
     collation: utf8mb4_unicode_ci
-    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_unix_socket: "{{ semaphore_mysql_socket }}"
     login_user: root
     login_password: "{{ semaphore_mysql_root_password }}"
   become: true
@@ -69,7 +96,7 @@
     host: "{{ semaphore_mysql_client_host }}"
     priv: "{{ semaphore_mysql_db }}.*:ALL"
     state: present
-    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_unix_socket: "{{ semaphore_mysql_socket }}"
     login_user: root
     login_password: "{{ semaphore_mysql_root_password }}"
   become: true
@@ -79,7 +106,7 @@
 # -----------------------------------------------------------------------
 # PostgreSQL
 # -----------------------------------------------------------------------
-- name: Install PostgreSQL packages
+- name: Install PostgreSQL packages (Debian)
   ansible.builtin.apt:
     name:
       - postgresql
@@ -89,7 +116,30 @@
     update_cache: true
     cache_valid_time: "{{ apt_cache_valid_time | default(3600) }}"
   become: true
-  when: semaphore_db_dialect == 'postgres'
+  when:
+    - semaphore_db_dialect == 'postgres'
+    - ansible_os_family == 'Debian'
+
+- name: Install PostgreSQL packages (RedHat)
+  ansible.builtin.dnf:
+    name:
+      - postgresql-server
+      - postgresql
+      - python3-psycopg2          # required by community.postgresql modules
+    state: present
+  become: true
+  when:
+    - semaphore_db_dialect == 'postgres'
+    - ansible_os_family == 'RedHat'
+
+- name: Initialise PostgreSQL database cluster (RedHat)
+  ansible.builtin.command:
+    cmd: postgresql-setup --initdb
+    creates: /var/lib/pgsql/data/PG_VERSION
+  become: true
+  when:
+    - semaphore_db_dialect == 'postgres'
+    - ansible_os_family == 'RedHat'
 
 - name: Ensure PostgreSQL service is enabled and started
   ansible.builtin.systemd:

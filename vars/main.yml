@@ -9,12 +9,16 @@ semaphore_arch_map:
 # Resolved architecture for the target host
 semaphore_arch: "{{ semaphore_arch_map[ansible_architecture] | default('amd64') }}"
 
-# Full download URL for the tarball
-semaphore_tarball_name: "semaphore_{{ semaphore_version }}_linux_{{ semaphore_arch }}.tar.gz"
-semaphore_download_url: "{{ semaphore_release_base_url }}/v{{ semaphore_version }}/{{ semaphore_tarball_name }}"
-
 # Resolved binary path
 semaphore_bin_path: "{{ semaphore_bin_dir }}/semaphore"
 
 # Config file path
 semaphore_config_file: "{{ semaphore_config_dir }}/config.json"
+
+# MySQL/MariaDB unix socket path (differs between Debian and RedHat families)
+semaphore_mysql_socket: "{{ '/var/lib/mysql/mysql.sock' if ansible_os_family == 'RedHat' else '/var/run/mysqld/mysqld.sock' }}"
+
+# Package download URLs
+semaphore_package_name: "semaphore_{{ semaphore_version }}_linux_{{ semaphore_arch }}"
+semaphore_deb_url: "{{ semaphore_release_base_url }}/v{{ semaphore_version }}/{{ semaphore_package_name }}.deb"
+semaphore_rpm_url: "{{ semaphore_release_base_url }}/v{{ semaphore_version }}/{{ semaphore_package_name }}.rpm"

@@ -64,17 +64,6 @@
   when: semaphore_admin_user not in (semaphore_user_list.stdout | default(''))
   no_log: true
 
-- name: Open semaphore port via ufw
-  community.general.ufw:
-    rule: allow
-    port: "{{ semaphore_port }}"
-    proto: tcp
-    comment: "SemaphoreUI web UI"
-  become: true
-  when:
-    - semaphore_configure_ufw | bool
-    - not (semaphore_caddy_enable_https | bool)
-
 - name: Enable and start semaphore service
   ansible.builtin.systemd:
     name: semaphore

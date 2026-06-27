@@ -1,317 +1,166 @@
-<h1 align="center">
-  semaphore-ansible
-</h1>
+# ansible-role-semaphoreui
 
-Ansible automation to install and configure **SemaphoreUI v2.18.12** on:
+Ansible role to install and configure [SemaphoreUI](https://semaphoreui.com/) on Debian/Ubuntu and RHEL/Rocky/Alma Linux systems.
 
-- **Proxmox VMs** — Debian/Ubuntu, x86_64
-- **Raspberry Pi** — Raspberry Pi OS / Debian, ARM64 or ARMv7
-
-SemaphoreUI is an open-source web UI for running Ansible playbooks, Terraform, and other DevOps tools without touching the terminal.
-
-This role installs SemaphoreUI as the upstream Linux binary by default.
+Installs Semaphore via the official `.deb` or `.rpm` package from GitHub releases, configures a systemd service, sets up the selected database backend, and optionally builds and runs Caddy as an HTTPS reverse proxy via xcaddy.
 
 ---
 
 ## Requirements
 
-**On your controller machine (the machine you run Ansible from):**
-
-- [uv](https://docs.astral.sh/uv/getting-started/installation/) — fast Python package manager
-- [just](https://github.com/casey/just#installation) — command runner (`brew install just` / `cargo install just` / distro package)
-
-**On target hosts:**
-
-- Debian 11+, Ubuntu 20.04+, or Raspberry Pi OS (Bullseye/Bookworm)
-- SSH access with sudo privileges
+- Ansible >= 2.14
+- `community.mysql` collection (required when `semaphore_db_dialect: mysql`)
+- `community.postgresql` collection (required when `semaphore_db_dialect: postgres`)
+- `community.general` collection (required when `semaphore_install_xcaddy: true`)
 
 ---
 
-## Quick Start
+## Supported Platforms
 
-### 1. Clone and bootstrap
-
-```bash
-git clone https://github.com/jershbytes/semaphore-ansible.git semaphore-ansible
-cd semaphore-ansible
-
-# Creates .venv, installs Ansible + all dependencies, installs Galaxy collections
-just install
-```
-
-That's it for setup. `just install` handles everything — no manual `pip install` needed.
-
-### 2. Point it at your hosts
-
-Edit `inventory/hosts.yml` with the IP addresses and SSH users for your machines:
-
-```yaml
-proxmox_vms:
-  hosts:
-    semaphore-vm:
-      ansible_host: 192.168.1.100   # your VM's IP
-      ansible_user: ubuntu
-      ansible_ssh_private_key_file: ~/.ssh/id_rsa
-
-raspberrypi:
-  hosts:
-    semaphore-pi:
-      ansible_host: 192.168.1.101   # your Pi's IP
-      ansible_user: pi
-      ansible_ssh_private_key_file: ~/.ssh/id_rsa
-```
-
-### 3. Deploy
-
-```bash
-just deploy          # all hosts
-just proxmox         # Proxmox VMs only
-just pi              # Raspberry Pi only
-just check           # dry-run first (no changes made)
-```
-
-Once complete, SemaphoreUI is available at `http://<host-ip>:3000`.
-
----
-
-## just recipes
-
-Run `just` with no arguments to see all available commands.
-
-| Recipe | What it does |
+| Distribution | Versions |
 |---|---|
-| `just install` | Bootstrap venv + install Galaxy collections |
-| `just deploy` | Full install/update on all hosts |
-| `just proxmox` | Deploy to Proxmox VMs only |
-| `just pi` | Deploy to Raspberry Pi only |
-| `just check` | Dry-run with diff (no changes applied) |
-| `just ping` | Test SSH connectivity to all hosts |
-| `just upgrade 2.19.0` | Upgrade Semaphore to a specific version |
-| `just lint` | Lint playbooks and roles with ansible-lint |
-| `just vault-create` | Create an encrypted secrets file |
-| `just vault-edit` | Edit an existing secrets file |
-| `just versions` | Show Python / Ansible versions in use |
-| `just clean` | Remove `.venv` and temp files |
-
-`just lint` runs ansible-lint in quiet mode against project-local collections to reduce environment warning noise.
-
-Pass extra Ansible flags to any recipe by appending them:
-
-```bash
-just deploy --ask-become-pass        # prompt for sudo password
-just deploy -e semaphore_port=8080   # override a variable inline
-```
-
-### Test on a new VM quickly
-
-Use the dedicated test playbook:
-
-```bash
-ansible-playbook -i "<vm-ip>," test-new-vm.yml -u <ssh-user> --ask-become-pass
-```
-
-Example:
-
-```bash
-ansible-playbook -i "192.168.1.150," test-new-vm.yml -u ubuntu --ask-become-pass
-```
+| Debian | Bullseye, Bookworm |
+| Ubuntu | Focal, Jammy, Noble |
+| RHEL / Rocky / Alma | 8, 9 |
 
 ---
 
-## Project Structure
+## Role Variables
 
-```
-semaphore-ansible/
-├── justfile                           # Task runner (start here)
-├── pyproject.toml                     # Python deps managed by uv
-├── ansible.cfg                        # Ansible configuration
-├── requirements.yml                   # Ansible Galaxy collections
-├── site.yml                           # Main playbook
-├── inventory/
-│   ├── hosts.yml                      # Your hosts (edit this)
-│   └── group_vars/
-│       ├── all.yml                    # Shared variables
-│       ├── proxmox_vms.yml            # Proxmox-specific overrides
-│       └── raspberrypi.yml            # Pi-specific overrides
-└── roles/
-    └── semaphoreui/
-        ├── defaults/main.yml          # All role settings (override freely)
-        ├── tasks/
-        │   ├── dependencies.yml       # OS packages
-        │   ├── database.yml           # DB install (SQLite/MariaDB/Postgres)
-        │   ├── user.yml               # semaphore service user + dirs
-        │   ├── install.yml            # Download & install binary
-        │   ├── caddy.yml              # xcaddy/caddy build + HTTPS proxy setup
-        │   ├── python.yml             # Ansible + pip setup on target
-        │   └── configure.yml          # config.json, systemd, admin user
-        └── templates/
-            ├── config.json.j2         # SemaphoreUI config file
-          ├── semaphore.service.j2   # SemaphoreUI systemd service
-          ├── Caddyfile.j2           # Caddy reverse proxy config
-          └── caddy.service.j2       # Caddy systemd service
-```
-
----
-
-## Configuration
-
-All settings live in `roles/semaphoreui/defaults/main.yml`. Override them in `inventory/group_vars/all.yml` or pass `-e var=value` on the command line.
-
-### Common variables
+### Core
 
 | Variable | Default | Description |
 |---|---|---|
-| `semaphore_version` | `2.18.12` | Version to install |
-| `semaphore_port` | `3000` | Web UI port |
-| `semaphore_db_dialect` | `sqlite` | Database: `sqlite`, `mysql`, `postgres` |
-| `semaphore_admin_user` | `admin` | First admin login |
-| `semaphore_admin_password` | `changeme` | First admin password — **change this** |
-| `semaphore_admin_email` | `admin@localhost` | Admin email |
-| `semaphore_install_ansible_pip` | `false` | Install Ansible/pip tooling on the target host (optional) |
-| `semaphore_use_venv` | `false` | Run target-side Ansible in a Python virtualenv (only when `semaphore_install_ansible_pip=true`) |
-| `semaphore_configure_ufw` | `false` | Open the port in ufw |
-| `semaphore_install_xcaddy` | `true` | Install xcaddy helper binary |
-| `semaphore_install_only_xcaddy` | `false` | If `true`, skip building caddy binary |
-| `semaphore_caddy_enable_https` | `true` | Run Caddy as HTTPS reverse proxy in front of SemaphoreUI |
-| `semaphore_caddy_domain` | `""` | Domain for public ACME certificates (empty uses internal TLS) |
+| `semaphore_version` | `2.18.12` | SemaphoreUI release version to install |
+| `semaphore_web_host` | `0.0.0.0` | Address SemaphoreUI binds to |
+| `semaphore_port` | `3000` | Port SemaphoreUI listens on |
+| `semaphore_release_base_url` | GitHub releases URL | Override for air-gapped environments |
 
-### Caddy HTTPS defaults
+### Paths
 
-By default, the role:
+| Variable | Default | Description |
+|---|---|---|
+| `semaphore_bin_dir` | `/usr/bin` | Directory containing the semaphore binary |
+| `semaphore_config_dir` | `/etc/semaphore` | Configuration directory |
+| `semaphore_data_dir` | `/var/lib/semaphore` | Persistent data directory |
+| `semaphore_tmp_dir` | `/tmp/semaphore` | Temporary working directory |
 
-- Builds `caddy` with `xcaddy`
-- Enables and starts a `caddy` systemd service
-- Proxies HTTPS traffic to SemaphoreUI
-- Includes `github.com/caddy-dns/cloudflare@latest` in the build
-- Binds SemaphoreUI to localhost when Caddy HTTPS is enabled
+### Service User
 
-When `semaphore_caddy_domain` is empty, Caddy serves HTTPS using `tls internal`.
-For public trusted certificates, set a domain and make sure DNS points to the host:
+| Variable | Default | Description |
+|---|---|---|
+| `semaphore_user` | `semaphore` | System user that runs the service |
+| `semaphore_group` | `semaphore` | System group for the service user |
+| `semaphore_user_home` | `/home/semaphore` | Home directory for the service user |
+
+### Admin Account
+
+Created on first run only. Subsequent runs are idempotent.
+
+| Variable | Default | Description |
+|---|---|---|
+| `semaphore_admin_user` | `admin` | Admin login name |
+| `semaphore_admin_password` | `changeme` | Admin password |
+| `semaphore_admin_email` | `admin@localhost` | Admin email address |
+| `semaphore_admin_name` | `Admin` | Admin display name |
+
+### Database
+
+| Variable | Default | Description |
+|---|---|---|
+| `semaphore_db_dialect` | `sqlite` | Database backend: `sqlite`, `mysql`, or `postgres` |
+
+**SQLite** (default):
+
+| Variable | Default | Description |
+|---|---|---|
+| `semaphore_sqlite_db_path` | `{{ semaphore_data_dir }}/database.sqlite` | Path to the SQLite database file |
+
+**MySQL / MariaDB** (`semaphore_db_dialect: mysql`):
+
+| Variable | Default | Description |
+|---|---|---|
+| `semaphore_mysql_host` | `127.0.0.1:3306` | MySQL host:port |
+| `semaphore_mysql_user` | `semaphore` | MySQL user |
+| `semaphore_mysql_password` | `changeme_mysql` | MySQL user password |
+| `semaphore_mysql_db` | `semaphore` | MySQL database name |
+| `semaphore_mysql_root_password` | `""` | Root password used to create the DB/user (local installs) |
+| `semaphore_mysql_client_host` | `127.0.0.1` | Host the semaphore user connects from |
+
+**PostgreSQL** (`semaphore_db_dialect: postgres`):
+
+| Variable | Default | Description |
+|---|---|---|
+| `semaphore_postgres_host` | `127.0.0.1:5432` | PostgreSQL host:port |
+| `semaphore_postgres_user` | `semaphore` | PostgreSQL role |
+| `semaphore_postgres_password` | `changeme_postgres` | PostgreSQL role password |
+| `semaphore_postgres_db` | `semaphore` | PostgreSQL database name |
+
+### Caddy / xcaddy (optional)
+
+| Variable | Default | Description |
+|---|---|---|
+| `semaphore_install_xcaddy` | `true` | Install xcaddy (requires Go toolchain download) |
+| `semaphore_install_only_xcaddy` | `false` | Install xcaddy only; skip building Caddy |
+| `semaphore_caddy_enable_https` | `true` | Build Caddy and run it as an HTTPS reverse proxy |
+| `semaphore_caddy_domain` | `""` | Public hostname for ACME certificates. Leave empty for a self-signed internal cert |
+| `semaphore_caddy_cloudflare_api_token` | `""` | Cloudflare API token for DNS-01 challenge. When set, Caddy uses the Cloudflare DNS plugin instead of HTTP-01 |
+| `semaphore_caddy_dns_resolvers` | `["1.1.1.1", "1.0.0.1"]` | DNS resolvers used by Caddy to verify propagation during the Cloudflare challenge |
+| `semaphore_caddy_upstream` | `127.0.0.1:{{ semaphore_port }}` | Upstream address Caddy proxies to |
+| `semaphore_caddy_config_dir` | `/etc/caddy` | Caddy configuration directory |
+| `semaphore_caddy_data_dir` | `/var/lib/caddy` | Caddy data/state directory |
+| `semaphore_go_version` | `1.24.5` | Go version used to build xcaddy |
+| `semaphore_caddy_xcaddy_plugins` | `[github.com/caddy-dns/cloudflare@latest]` | xcaddy plugins to compile into the Caddy binary |
+
+---
+
+## Example Playbooks
+
+### Minimal — SQLite, no Caddy
 
 ```yaml
-semaphore_caddy_domain: semaphore.example.com
+- hosts: semaphore
+  roles:
+    - role: jershbytes.semaphoreui
+      vars:
+        semaphore_install_xcaddy: false
+        semaphore_admin_password: "s3cr3t"
 ```
 
-If `semaphore_configure_ufw=true`, the role opens ports `80` and `443` for Caddy.
-
-Install only `xcaddy` (skip caddy build/runtime):
+### MariaDB backend with Caddy HTTPS + Cloudflare DNS challenge
 
 ```yaml
-semaphore_install_xcaddy: true
-semaphore_install_only_xcaddy: true
+- hosts: semaphore
+  roles:
+    - role: jershbytes.semaphoreui
+      vars:
+        semaphore_db_dialect: mysql
+        semaphore_mysql_root_password: "rootpassword"
+        semaphore_mysql_password: "semaphorepassword"
+        semaphore_caddy_domain: "semaphore.example.com"
+        semaphore_caddy_cloudflare_api_token: "your-cloudflare-api-token"
+        semaphore_admin_password: "s3cr3t"
 ```
 
-Disable Caddy HTTPS proxy entirely:
+### PostgreSQL backend, no Caddy
 
 ```yaml
-semaphore_caddy_enable_https: false
-```
-
-By default, `semaphore_caddy_xcaddy_plugins` already includes:
-
-```yaml
-- github.com/caddy-dns/cloudflare@latest
+- hosts: semaphore
+  roles:
+    - role: jershbytes.semaphoreui
+      vars:
+        semaphore_db_dialect: postgres
+        semaphore_postgres_password: "semaphorepassword"
+        semaphore_install_xcaddy: false
+        semaphore_admin_password: "s3cr3t"
 ```
 
 ---
 
-## Database Options
+## License
 
-Set `semaphore_db_dialect` to one of the three options. The role installs and configures the database automatically — no manual setup required.
+MIT
 
-### SQLite (default)
+## Author
 
-Zero configuration. Best for single-host installs and getting started quickly.
-
-```yaml
-# inventory/group_vars/all.yml
-semaphore_db_dialect: sqlite
-```
-
-### MariaDB / MySQL
-
-The role installs MariaDB, creates the database, and creates the user.
-
-```yaml
-# inventory/group_vars/all.yml
-semaphore_db_dialect: mysql
-semaphore_mysql_root_password: "{{ vault_mysql_root_password }}"
-semaphore_mysql_password: "{{ vault_semaphore_mysql_password }}"
-```
-
-### PostgreSQL
-
-The role installs PostgreSQL, creates the database, and creates the role.
-
-```yaml
-# inventory/group_vars/all.yml
-semaphore_db_dialect: postgres
-semaphore_postgres_password: "{{ vault_semaphore_postgres_password }}"
-```
-
----
-
-## Keeping Secrets Safe with Ansible Vault
-
-Never commit passwords in plain text. Use Ansible Vault instead:
-
-```bash
-# Create an encrypted secrets file
-just vault-create
-```
-
-Add your secrets to the file:
-
-```yaml
-# inventory/group_vars/vault.yml  (encrypted)
-vault_semaphore_admin_password: "MyStr0ngPassw0rd!"
-vault_mysql_root_password: "RootPassw0rd!"
-vault_semaphore_mysql_password: "AppPassw0rd!"
-```
-
-Reference them in `inventory/group_vars/all.yml`:
-
-```yaml
-semaphore_admin_password: "{{ vault_semaphore_admin_password }}"
-semaphore_mysql_root_password: "{{ vault_mysql_root_password }}"
-semaphore_mysql_password: "{{ vault_semaphore_mysql_password }}"
-```
-
-Deploy with vault decryption:
-
-```bash
-just deploy --ask-vault-pass
-```
-
----
-
-## Architecture Support
-
-The role auto-detects the CPU and fetches the right binary — no manual selection needed.
-
-| Architecture | Target |
-|---|---|
-| `x86_64` | Proxmox VMs, standard servers |
-| `aarch64` | Raspberry Pi 4 / 5 (64-bit OS) |
-| `armv7l` | Raspberry Pi 2 / 3 (32-bit OS) |
-| `armv6l` | Raspberry Pi Zero / Zero W |
-
----
-
-## Upgrading SemaphoreUI
-
-```bash
-just upgrade 2.19.0            # all hosts
-just upgrade-proxmox 2.19.0    # Proxmox VMs only
-just upgrade-pi 2.19.0         # Raspberry Pi only
-```
-
----
-
-## Managing the Service on Target Hosts
-
-```bash
-sudo systemctl status semaphore    # check status
-sudo journalctl -u semaphore -f    # follow logs
-sudo systemctl restart semaphore   # restart
-```
+[jershbytes](https://github.com/jershbytes)

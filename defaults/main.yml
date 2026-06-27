@@ -15,7 +15,7 @@ semaphore_user_shell: /bin/bash
 # -------------------------------------------------
 # Paths
 # -------------------------------------------------
-semaphore_bin_dir: /usr/local/bin
+semaphore_bin_dir: /usr/bin
 semaphore_config_dir: /etc/semaphore
 semaphore_data_dir: /var/lib/semaphore
 semaphore_tmp_dir: /tmp/semaphore
@@ -58,28 +58,6 @@ semaphore_admin_user: admin
 semaphore_admin_password: "changeme"
 semaphore_admin_email: "admin@localhost"
 semaphore_admin_name: "Admin"
-
-# -------------------------------------------------
-# Python / Ansible setup
-# -------------------------------------------------
-# Install Ansible-related Python packages on the target host.
-# Disabled by default for binary-first Semaphore installations.
-semaphore_install_ansible_pip: false
-
-# Use a dedicated virtual environment on the target host (recommended for PEP 668 systems)
-# Only used when semaphore_install_ansible_pip is true.
-semaphore_use_venv: false
-semaphore_venv_path: "{{ semaphore_user_home }}/venv"
-
-# pip requirements (leave empty to skip)
-semaphore_pip_requirements:
-  - ansible
-  - netaddr
-  - jmespath
-
-# Ansible Galaxy collections requirements file path (leave empty to skip)
-# The file must exist on the controller or be created via the 'files' dir.
-semaphore_galaxy_requirements_file: ""
 
 # -------------------------------------------------
 # Systemd logging
@@ -138,6 +116,15 @@ semaphore_go_root: /usr/local/go
 semaphore_go_path: /opt/go
 semaphore_xcaddy_bin_path: /usr/local/bin/xcaddy
 semaphore_caddy_bin_path: /usr/local/bin/caddy
+
+# Cloudflare API token for DNS-01 ACME challenge.
+# Required when semaphore_caddy_domain is set; leave empty to use HTTP-01 challenge.
+semaphore_caddy_cloudflare_api_token: ""
+
+# DNS resolvers Caddy uses to verify DNS propagation during the Cloudflare challenge.
+semaphore_caddy_dns_resolvers:
+  - "1.1.1.1"
+  - "1.0.0.1"
 
 # Optional xcaddy plugins used when building caddy
 # Example:

@@ -14,39 +14,20 @@
         semaphore_version not in semaphore_installed_version.stdout
       }}
 
-- name: Download semaphore tarball
-  ansible.builtin.get_url:
-    url: "{{ semaphore_download_url }}"
-    dest: "/tmp/{{ semaphore_tarball_name }}"
-    mode: "0644"
-    timeout: 60
-  when: semaphore_needs_install | bool
+- name: Install semaphore from deb
+  ansible.builtin.apt:
+    deb: "{{ semaphore_deb_url }}"
   become: true
+  when:
+    - semaphore_needs_install
+    - ansible_os_family == 'Debian'
 
-- name: Extract semaphore binary
-  ansible.builtin.unarchive:
-    src: "/tmp/{{ semaphore_tarball_name }}"
-    dest: /tmp/
-    remote_src: true
-    list_files: false
-  when: semaphore_needs_install | bool
+- name: Install semaphore from rpm
+  ansible.builtin.dnf:
+    name: "{{ semaphore_rpm_url }}"
+    state: present
+    disable_gpg_check: true
   become: true
-
-- name: Install semaphore binary to {{ semaphore_bin_dir }}
-  ansible.builtin.copy:
-    src: /tmp/semaphore
-    dest: "{{ semaphore_bin_path }}"
-    owner: root
-    group: root
-    mode: "0755"
-    remote_src: true
-  when: semaphore_needs_install | bool
-  become: true
-  notify: Restart semaphore
-
-- name: Clean up downloaded tarball
-  ansible.builtin.file:
-    path: "/tmp/{{ semaphore_tarball_name }}"
-    state: absent
-  when: semaphore_needs_install | bool
-  become: true
+  when:
+    - semaphore_needs_install
+    - ansible_os_family == 'RedHat'

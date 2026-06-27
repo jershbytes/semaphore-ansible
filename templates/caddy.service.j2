@@ -13,6 +13,7 @@ User=caddy
 Group=caddy
 ExecStart={{ semaphore_caddy_bin_path }} run --environ --config {{ semaphore_caddy_config_file }}
 ExecReload={{ semaphore_caddy_bin_path }} reload --config {{ semaphore_caddy_config_file }}
+EnvironmentFile=-/etc/caddy/caddy.env
 Restart=on-failure
 RestartSec=5s
 AmbientCapabilities=CAP_NET_BIND_SERVICE
