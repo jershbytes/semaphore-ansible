@@ -1,4 +1,5 @@
 # ansible-role-semaphoreui
+[![lint](https://github.com/jershbytes/ansible-role-semaphore/actions/workflows/lint.yml/badge.svg)](https://github.com/jershbytes/ansible-role-semaphore/actions/workflows/lint.yml)
 
 Ansible role to install and configure [SemaphoreUI](https://semaphoreui.com/) on Debian/Ubuntu and RHEL/Rocky/Alma Linux systems.
 
