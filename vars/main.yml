@@ -7,7 +7,7 @@ semaphore_arch_map:
   armv6l: arm
 
 # Resolved architecture for the target host
-semaphore_arch: "{{ semaphore_arch_map[ansible_architecture] | default('amd64') }}"
+semaphore_arch: "{{ semaphore_arch_map[ansible_facts['architecture']] | default('amd64') }}"
 
 # Resolved binary path
 semaphore_bin_path: "{{ semaphore_bin_dir }}/semaphore"

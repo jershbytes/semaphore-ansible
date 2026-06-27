@@ -30,4 +30,4 @@
   become: true
   when:
     - semaphore_needs_install
-    - ansible_os_family == 'RedHat'
+    - ansible_facts["os_family"] == 'RedHat'
