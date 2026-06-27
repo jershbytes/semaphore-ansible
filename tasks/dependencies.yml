@@ -2,6 +2,7 @@
 - name: Install OS dependencies
   ansible.builtin.package:
     name:
+      - acl
       - git
       - curl
       - wget
